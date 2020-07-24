@@ -23,6 +23,8 @@ app.get('/productos', verificaToken, (req, res)=>{
     Producto.find({disponible:true})
             .skip(desde)
             .limit(limite)
+            .populate('usuario', 'nombre email')
+            .populate('categoria', 'descripcion')
             .exec((err, productos)=>{
                 if (err){
                     return res.status(400).json({
@@ -30,7 +32,7 @@ app.get('/productos', verificaToken, (req, res)=>{
                         err
                     })
                 }
-                Producto.count({estado:true}, (err, conteo)=>{
+                Producto.count({disponible:true}, (err, conteo)=>{
                     res.json({
                         ok:true,
                         count: conteo,
@@ -69,6 +71,33 @@ app.get('/productos/:id', verificaToken, (req, res)=>{
             res.json({
                 ok:true,
                 producto: productoDB
+            })
+        })
+});
+
+// =============================
+// Buscar productos
+// =============================
+
+app.get('/productos/buscar/:termino',verificaToken , (req, res)=>{
+
+    let termino = req.params.termino;
+
+    let regex = new RegExp(termino, 'i')
+
+    Producto.find({ nombre: regex })
+        .populate('usuario', 'nombre email')
+        .populate('categoria', 'descripcion')
+        .exec((err, productos)=>{
+            if (err){
+                return res.status(500).json({
+                    ok:false,
+                    err
+                })
+            } 
+            res.json({
+                ok: true,
+                productos
             })
         })
 });
@@ -165,6 +194,12 @@ app.delete('/productos/:id', (req, res)=>{
 
     Producto.findByIdAndUpdate(id, cambiaDisponible, {new: true}, (err, productoBorrado) =>{
         if (err){
+            return res.status(500).json({
+                ok:false,
+                err
+            })
+        }
+        if (!productoBorrado){
             return res.status(400).json({
                 ok:false,
                 err
